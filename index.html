@@ -2,209 +2,414 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edge AI Inventory Scanner - Full Detection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Edge AI Inventory Scanner</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --neutral: #64748b;
+            --neutral-hover: #475569;
+            --flash: #fbbf24;
+            --flash-hover: #f59e0b;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
         }
-        h1 { text-align: center; color: #333; margin-bottom: 10px; font-size: 24px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            padding: 12px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
         .status-badge {
             display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 15px;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
         }
-        .status-badge.online { background: #4CAF50; color: white; }
-        .status-badge.demo { background: #FF9800; color: white; }
+
+        .status-badge.online { background: #dcfce7; color: #166534; }
+        .status-badge.demo { background: #fef3c7; color: #92400e; }
+
         #camera-container {
             position: relative;
             width: 100%;
-            max-width: 800px;
-            margin: 0 auto 20px;
             background: #000;
             border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
         }
-        #video { width: 100%; height: auto; display: block; }
-        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        #video { 
+            width: 100%; 
+            height: auto; 
+            display: block; 
+            transition: transform 0.3s ease;
+            max-height: 60vh;
+            object-fit: cover;
+        }
+        
+        #video.mirrored { transform: scaleX(-1); }
+        
+        #canvas { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            transition: transform 0.3s ease; 
+        }
+        #canvas.mirrored { transform: scaleX(-1); }
+
         #overlay-msg {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9);
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
             color: white; z-index: 5;
         }
+
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
             border-radius: 50%;
-            width: 40px; height: 40px;
+            width: 32px; height: 32px;
             animation: spin 1s linear infinite;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .button-group { text-align: center; margin-bottom: 20px; }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
         .btn {
-            padding: 10px 20px; margin: 5px;
-            border: none; border-radius: 8px;
-            cursor: pointer; font-size: 14px; font-weight: bold;
-            transition: all 0.3s;
-        }
-        .btn-success { background: #4CAF50; color: white; }
-        .btn-danger { background: #f44336; color: white; }
-        .btn-primary { background: #2196F3; color: white; }
-        .btn-warning { background: #FF9800; color: white; }
-        .btn:disabled { background: #ccc; cursor: not-allowed; }
-        .btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-2px); }
-        
-        #live-detection {
-            text-align: center; margin: 10px auto;
-            max-width: 800px; padding: 12px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; border-radius: 10px;
-            font-size: 15px; font-weight: bold;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             min-height: 44px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            -webkit-appearance: none;
         }
+
+        .btn:active:not(:disabled) { transform: scale(0.98); }
+        .btn:disabled { 
+            background: #e2e8f0; 
+            color: #94a3b8; 
+            cursor: not-allowed; 
+            transform: none !important;
+        }
+
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover:not(:disabled) { background: #059669; }
         
-        #data-section {
-            max-width: 800px; margin: 20px auto;
-            background: white; border-radius: 12px;
-            border: 1px solid #ddd; min-height: 150px; overflow: hidden;
-        }
-        #data-header {
-            padding: 12px 16px; border-bottom: 1px solid #ddd;
-            font-weight: 700; font-size: 14px;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            display: flex; justify-content: space-between;
-        }
-        #data-list { padding: 8px; max-height: 400px; overflow-y: auto; }
-        .log-item {
-            padding: 10px 12px; background: #f9fafb;
-            border-radius: 8px; margin-bottom: 8px;
-            border-left: 4px solid #2196F3; font-size: 13px;
-        }
-        .log-item .time { color: #666; font-size: 11px; display: block; margin-bottom: 4px; }
-        .log-item .items { font-weight: 600; color: #333; }
-        .empty-state { text-align: center; color: #999; padding: 30px; font-size: 14px; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover:not(:disabled) { background: #dc2626; }
         
-        #filter-section {
-            max-width: 800px; margin: 15px auto;
-            background: white; border-radius: 12px;
-            border: 1px solid #ddd; padding: 12px 16px;
-        }
-        #filter-section label { font-weight: bold; font-size: 13px; margin-right: 10px; }
-        #filter-section select {
-            padding: 6px 12px; border-radius: 6px;
-            border: 1px solid #ddd; font-size: 13px;
-        }
-        #filter-section input[type="range"] { vertical-align: middle; }
-        #threshold-value { font-weight: bold; color: #2196F3; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
         
-        #save-mode-section {
-            max-width: 800px; margin: 15px auto;
-            background: white; border-radius: 12px;
-            border: 1px solid #ddd; padding: 12px 16px;
+        .btn-neutral { background: var(--neutral); color: white; }
+        .btn-neutral:hover:not(:disabled) { background: var(--neutral-hover); }
+        
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-warning:hover:not(:disabled) { background: #d97706; }
+        
+        .btn-flash { background: var(--flash); color: #1f2937; }
+        .btn-flash:hover:not(:disabled) { background: var(--flash-hover); }
+        .btn-flash.active { background: var(--flash-hover); color: white; box-shadow: 0 0 12px rgba(251, 191, 36, 0.6); }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        #save-mode-section label { font-weight: bold; font-size: 13px; margin-right: 10px; }
-        #save-mode-section select {
-            padding: 6px 12px; border-radius: 6px;
-            border: 1px solid #ddd; font-size: 13px;
+
+        .card-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
         }
+
+        .form-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .form-group:last-child { margin-bottom: 0; }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+            min-width: 120px;
+        }
+
+        select, input[type="range"] {
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-main);
+            background: white;
+            outline: none;
+            transition: border-color 0.2s;
+            flex: 1;
+        }
+
+        select:focus, input[type="range"]:focus {
+            border-color: var(--primary);
+        }
+
+        #threshold-value {
+            font-weight: 600;
+            color: var(--primary);
+            min-width: 40px;
+            text-align: right;
+        }
+
         .mode-info {
-            font-size: 12px; color: #666; margin-top: 5px;
-            padding: 8px; background: #f0f9ff; border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary);
+        }
+
+        #live-detection {
+            text-align: center;
+            padding: 10px 16px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        #live-detection.active {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #065f46;
+        }
+
+        #data-list { 
+            max-height: 300px; 
+            overflow-y: auto; 
+        }
+
+        .log-item {
+            padding: 10px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            border-left: 3px solid var(--primary);
+            font-size: 13px;
+        }
+
+        .log-item .time { 
+            color: var(--text-muted); 
+            font-size: 11px; 
+            display: block; 
+            margin-bottom: 3px; 
+            font-family: monospace;
+        }
+
+        .log-item .items { 
+            font-weight: 600; 
+            color: var(--text-main); 
+        }
+
+        .empty-state { 
+            text-align: center; 
+            color: var(--text-muted); 
+            padding: 30px 20px; 
+            font-size: 13px; 
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 8px; }
+            
+            h1 { font-size: 18px; }
+            .subtitle { font-size: 12px; }
+            
+            .controls {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+            
+            .btn {
+                padding: 14px 16px;
+                font-size: 14px;
+            }
+            
+            .form-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .form-group label {
+                min-width: auto;
+                margin-bottom: 4px;
+            }
+            
+            .card {
+                padding: 14px;
+            }
+            
+            #video {
+                max-height: 50vh;
+            }
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            #video { max-height: 40vh; }
+            #data-list { max-height: 150px; }
         }
     </style>
 </head>
 <body>
-    <h1>🔍 Edge AI Inventory Scanner</h1>
-    <p class="subtitle">Mendeteksi 80+ kelas objek secara real-time</p>
+    <div class="container">
+        <header>
+            <span id="db-status" class="status-badge demo">Demo Mode</span>
+            <h1>Edge AI Inventory Scanner</h1>
+            <p class="subtitle">Real-time object detection</p>
+        </header>
 
-    <div style="text-align: center;">
-        <span id="db-status" class="status-badge demo">DEMO MODE</span>
-    </div>
+        <div id="camera-container">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="canvas"></canvas>
+            <div id="overlay-msg">
+                <div class="spinner"></div>
+                <p id="overlay-text">Initializing...</p>
+            </div>
+        </div>
 
-    <div id="camera-container">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="canvas"></canvas>
-        <div id="overlay-msg">
-            <div class="spinner"></div>
-            <p id="overlay-text">Memulai Sistem...</p>
+        <div id="live-detection">Waiting for camera...</div>
+
+        <div class="controls">
+            <button id="btnCamera" class="btn btn-success">Start Camera</button>
+            <button id="btnSwitchCamera" class="btn btn-neutral" disabled>Switch Camera</button>
+            <button id="btnMirror" class="btn btn-neutral" disabled>Mirror: Off</button>
+            <button id="btnFlash" class="btn btn-flash" disabled>Flash: Off</button>
+            <button id="btnAI" class="btn btn-primary" disabled style="grid-column: span 2;">Start AI</button>
+        </div>
+
+        <button id="btnExport" class="btn btn-warning" style="width: 100%; margin-bottom: 16px; display: none;">Export to CSV</button>
+
+        <div class="card">
+            <div class="card-header">Detection Settings</div>
+            <div class="form-group">
+                <label>Object Class</label>
+                <select id="class-filter">
+                    <option value="all">All Classes (80+)</option>
+                    <option value="person">Person</option>
+                    <option value="laptop">Laptop</option>
+                    <option value="cell phone">Cell Phone</option>
+                    <option value="book">Book</option>
+                    <option value="scissors">Scissors</option>
+                    <option value="mouse">Mouse</option>
+                    <option value="keyboard">Keyboard</option>
+                    <option value="cat">Cat</option>
+                    <option value="dog">Dog</option>
+                    <option value="chair">Chair</option>
+                    <option value="bottle">Bottle</option>
+                    <option value="cup">Cup</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Confidence</label>
+                <input type="range" id="threshold-slider" min="20" max="90" value="35" step="5">
+                <span id="threshold-value">35%</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Storage Settings</div>
+            <div class="form-group">
+                <label>Save Mode</label>
+                <select id="save-mode">
+                    <option value="all">Save All (No Throttle)</option>
+                    <option value="fast">Fast (1 sec)</option>
+                    <option value="normal" selected>Normal (3 sec)</option>
+                    <option value="slow">Slow (5 sec)</option>
+                </select>
+            </div>
+            <div class="mode-info" id="mode-info">
+                Normal mode: Saves data every 3 seconds. Balanced between completeness and database efficiency.
+            </div>
+        </div>
+
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="margin: 0; padding: 14px 16px;">
+                <span>Detection Log</span>
+                <span id="log-count" style="font-weight: 500; color: var(--text-muted); font-size: 12px;">0 items</span>
+            </div>
+            <div id="data-list" style="padding: 12px;">
+                <div class="empty-state">No objects detected yet</div>
+            </div>
         </div>
     </div>
 
-    <div id="live-detection"> Menunggu kamera dinyalakan...</div>
-
-    <!-- Filter Section -->
-    <div id="filter-section">
-        <label>🎯 Filter Kelas:</label>
-        <select id="class-filter">
-            <option value="all">Semua Kelas (80+)</option>
-            <option value="person">👤 Person (Orang)</option>
-            <option value="laptop">💻 Laptop</option>
-            <option value="cell phone"> Cell Phone</option>
-            <option value="book">📖 Book (Buku)</option>
-            <option value="scissors">️ Scissors (Gunting)</option>
-            <option value="mouse">🖱️ Mouse</option>
-            <option value="keyboard">⌨️ Keyboard</option>
-            <option value="cat">🐱 Cat (Kucing)</option>
-            <option value="dog">🐶 Dog (Anjing)</option>
-            <option value="bird">🐦 Bird (Burung)</option>
-            <option value="horse">🐴 Horse (Kuda)</option>
-            <option value="cow">🐄 Cow (Sapi)</option>
-            <option value="chair">🪑 Chair (Kursi)</option>
-            <option value="bottle">🍶 Bottle (Botol)</option>
-            <option value="cup"> Cup (Cangkir)</option>
-            <option value="tvmonitor">📺 TV/Monitor</option>
-            <option value="teddy bear">🧸 Teddy Bear</option>
-        </select>
-        
-        <label style="margin-left: 15px;">⚙️ Threshold:</label>
-        <input type="range" id="threshold-slider" min="20" max="90" value="35" step="5">
-        <span id="threshold-value">35%</span>
-    </div>
-
-    <!-- Save Mode Section -->
-    <div id="save-mode-section">
-        <label>💾 Mode Penyimpanan:</label>
-        <select id="save-mode">
-            <option value="all">🔥 Simpan SEMUA Deteksi (Tanpa Throttling)</option>
-            <option value="fast">⚡ Cepat (1 detik)</option>
-            <option value="normal" selected>⚖️ Normal (3 detik)</option>
-            <option value="slow"> Hemat (5 detik)</option>
-        </select>
-        <div class="mode-info" id="mode-info">
-            💡 <strong>Mode Normal:</strong> Simpan setiap 3 detik. Balance antara lengkap dan hemat database.
-        </div>
-    </div>
-
-    <div class="button-group">
-        <button id="btnCamera" class="btn btn-success"> Start Camera</button>
-        <button id="btnAI" class="btn btn-primary" disabled> Start AI</button>
-        <button id="btnExport" class="btn btn-warning" style="display:none;">📥 Export CSV</button>
-    </div>
-
-    <div id="data-section">
-        <div id="data-header">
-            <span>📋 Detected Objects Log</span>
-            <span id="log-count">0 items</span>
-        </div>
-        <div id="data-list">
-            <div class="empty-state">Menunggu deteksi objek...</div>
-        </div>
-    </div>
-
-    <!-- TensorFlow.js & COCO-SSD -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 
@@ -221,7 +426,6 @@
             appId: "1:840301312128:web:adaefa4d31060b8cff8e65"
         };
 
-        // ============ MOCK FIRESTORE ============
         class MockFirestore {
             constructor() {
                 this.data = JSON.parse(localStorage.getItem('mock_inventory_db') || '[]');
@@ -240,7 +444,6 @@
             onSnapshot(cb) { this.listeners.push(cb); cb(this.data); return () => {}; }
         }
 
-        // ============ DATABASE INIT ============
         let db, isMockMode = true, collectionRef;
         const dbStatusEl = document.getElementById('db-status');
 
@@ -249,9 +452,8 @@
             db = getFirestore(app);
             collectionRef = collection(db, 'inventory_detections');
             isMockMode = false;
-            dbStatusEl.textContent = "FIREBASE ONLINE";
+            dbStatusEl.textContent = "Firebase Online";
             dbStatusEl.className = "status-badge online";
-            console.log("✅ Firebase terhubung!");
         } catch (e) {
             console.error("Firebase error:", e);
         }
@@ -259,13 +461,16 @@
         if (isMockMode) {
             db = new MockFirestore();
             collectionRef = db.collection();
-            console.log("⚠️ Pakai Mock Database");
         }
 
-        // ============ VARIABEL ============
         let cameraStream = null, isCameraOn = false, model = null;
         let isAIDetecting = false, lastSaveTime = 0;
-        let SAVE_THROTTLE_MS = 3000; // Default: 3 detik
+        let SAVE_THROTTLE_MS = 3000;
+        let isMirrored = false;
+        let currentFacingMode = 'environment';
+        let isFlashOn = false;
+        let torchSupported = false;
+        let videoTrack = null;
         
         const ALL_COCO_CLASSES = [
             'person', 'bicycle', 'car', 'motorbike', 'aeroplane', 'bus', 'train', 'truck', 'boat',
@@ -290,6 +495,9 @@
         const overlayMsg = document.getElementById('overlay-msg');
         const overlayText = document.getElementById('overlay-text');
         const btnCamera = document.getElementById('btnCamera');
+        const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+        const btnMirror = document.getElementById('btnMirror');
+        const btnFlash = document.getElementById('btnFlash');
         const btnAI = document.getElementById('btnAI');
         const btnExport = document.getElementById('btnExport');
         const liveDetectionEl = document.getElementById('live-detection');
@@ -299,39 +507,135 @@
         const saveMode = document.getElementById('save-mode');
         const modeInfo = document.getElementById('mode-info');
 
-        // ============ SAVE MODE CHANGE ============
+        function toggleMirror() {
+            isMirrored = !isMirrored;
+            if (isMirrored) {
+                video.classList.add('mirrored');
+                canvas.classList.add('mirrored');
+                btnMirror.textContent = 'Mirror: On';
+            } else {
+                video.classList.remove('mirrored');
+                canvas.classList.remove('mirrored');
+                btnMirror.textContent = 'Mirror: Off';
+            }
+        }
+
+        async function checkTorchSupport() {
+            if (!videoTrack) return false;
+            try {
+                const capabilities = videoTrack.getCapabilities();
+                torchSupported = capabilities.torch === true;
+                return torchSupported;
+            } catch (e) {
+                torchSupported = false;
+                return false;
+            }
+        }
+
+        async function toggleFlash() {
+            if (!videoTrack || !isCameraOn) return;
+            
+            // Check if torch is supported
+            const supported = await checkTorchSupport();
+            if (!supported) {
+                alert('Flash/Torch is not supported on this camera. It usually only works on the back camera of mobile devices.');
+                return;
+            }
+            
+            try {
+                isFlashOn = !isFlashOn;
+                await videoTrack.applyConstraints({
+                    advanced: [{ torch: isFlashOn }]
+                });
+                
+                if (isFlashOn) {
+                    btnFlash.textContent = 'Flash: On';
+                    btnFlash.classList.add('active');
+                } else {
+                    btnFlash.textContent = 'Flash: Off';
+                    btnFlash.classList.remove('active');
+                }
+            } catch (err) {
+                console.error('Failed to toggle flash:', err);
+                isFlashOn = false;
+                btnFlash.textContent = 'Flash: Off';
+                btnFlash.classList.remove('active');
+                alert('Failed to control flash. Please try again.');
+            }
+        }
+
+        async function switchCamera() {
+            if (!isCameraOn) return;
+            
+            // Turn off flash when switching camera
+            if (isFlashOn) {
+                await toggleFlash();
+            }
+            
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+            
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1280 }, 
+                        height: { ideal: 720 } 
+                    },
+                    audio: false
+                });
+                
+                video.srcObject = cameraStream;
+                videoTrack = cameraStream.getVideoTracks()[0];
+                
+                // Check torch support for new camera
+                await checkTorchSupport();
+                btnFlash.disabled = !torchSupported;
+                
+                btnSwitchCamera.textContent = currentFacingMode === 'environment' ? 'Front Camera' : 'Back Camera';
+                
+                // Auto-enable mirror for front camera
+                if (currentFacingMode === 'user' && !isMirrored) {
+                    toggleMirror();
+                } else if (currentFacingMode === 'environment' && isMirrored) {
+                    toggleMirror();
+                }
+                
+            } catch (err) {
+                console.error("Failed to switch camera:", err);
+                alert("Failed to switch camera. Please try again.");
+                currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            }
+        }
+
         saveMode.addEventListener('change', (e) => {
             const mode = e.target.value;
             switch(mode) {
                 case 'all':
-                    SAVE_THROTTLE_MS = 0; // Tanpa throttling
-                    modeInfo.innerHTML = '🔥 <strong>Mode Lengkap:</strong> Simpan SETIAP deteksi. Paling lengkap tapi boros database (bisa 1800 data/menit)!';
+                    SAVE_THROTTLE_MS = 0;
+                    modeInfo.innerHTML = 'Save All: Saves every detection. Most complete but uses more database quota.';
                     break;
                 case 'fast':
-                    SAVE_THROTTLE_MS = 1000; // 1 detik
-                    modeInfo.innerHTML = '⚡ <strong>Mode Cepat:</strong> Simpan setiap 1 detik. Cepat tapi masih hemat.';
+                    SAVE_THROTTLE_MS = 1000;
+                    modeInfo.innerHTML = 'Fast Mode: Saves every 1 second. Responsive but still relatively efficient.';
                     break;
                 case 'normal':
-                    SAVE_THROTTLE_MS = 3000; // 3 detik
-                    modeInfo.innerHTML = '⚖️ <strong>Mode Normal:</strong> Simpan setiap 3 detik. Balance antara lengkap dan hemat.';
+                    SAVE_THROTTLE_MS = 3000;
+                    modeInfo.innerHTML = 'Normal Mode: Saves every 3 seconds. Balanced between completeness and efficiency.';
                     break;
                 case 'slow':
-                    SAVE_THROTTLE_MS = 5000; // 5 detik
-                    modeInfo.innerHTML = ' <strong>Mode Hemat:</strong> Simpan setiap 5 detik. Paling hemat database.';
+                    SAVE_THROTTLE_MS = 5000;
+                    modeInfo.innerHTML = 'Slow Mode: Saves every 5 seconds. Most efficient for long-term use.';
                     break;
             }
-            console.log(`💾 Mode penyimpanan: ${mode} (${SAVE_THROTTLE_MS}ms)`);
         });
 
-        // ============ FILTER & THRESHOLD EVENTS ============
         classFilter.addEventListener('change', (e) => {
             const val = e.target.value;
-            if (val === 'all') {
-                TARGET_CLASSES = [...ALL_COCO_CLASSES];
-            } else {
-                TARGET_CLASSES = [val];
-            }
-            console.log(`🎯 Filter kelas: ${TARGET_CLASSES.length} kelas aktif`);
+            TARGET_CLASSES = val === 'all' ? [...ALL_COCO_CLASSES] : [val];
         });
 
         thresholdSlider.addEventListener('input', (e) => {
@@ -339,14 +643,19 @@
             thresholdValue.textContent = `${e.target.value}%`;
         });
 
-        // ============ CAMERA ============
         async function startCamera() {
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    video: { 
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1280 }, 
+                        height: { ideal: 720 } 
+                    },
                     audio: false
                 });
                 video.srcObject = cameraStream;
+                videoTrack = cameraStream.getVideoTracks()[0];
+                
                 await new Promise(resolve => {
                     video.onloadedmetadata = () => {
                         canvas.width = video.videoWidth;
@@ -354,53 +663,79 @@
                         resolve();
                     };
                 });
+                
+                // Check torch support
+                await checkTorchSupport();
+                btnFlash.disabled = !torchSupported;
+                
                 overlayMsg.style.display = 'none';
                 isCameraOn = true;
                 btnAI.disabled = false;
-                btnCamera.textContent = '⏹ Stop Camera';
+                btnMirror.disabled = false;
+                btnSwitchCamera.disabled = false;
+                btnSwitchCamera.textContent = 'Front Camera';
+                btnCamera.textContent = 'Stop Camera';
                 btnCamera.className = 'btn btn-danger';
-                liveDetectionEl.textContent = '📷 Kamera aktif. Klik "Start AI" untuk mulai deteksi.';
-                console.log("✅ Kamera nyala!");
+                liveDetectionEl.textContent = 'Camera active. Tap "Start AI" to begin detection.';
             } catch (err) {
-                console.error("Gagal akses kamera:", err);
-                alert("Akses kamera ditolak. Izinkan di browser.");
+                console.error("Camera access failed:", err);
+                alert("Camera access denied. Please allow camera permission in your browser settings.");
             }
         }
 
-        function stopCamera() {
+        async function stopCamera() {
+            // Turn off flash first
+            if (isFlashOn && videoTrack) {
+                try {
+                    await videoTrack.applyConstraints({ advanced: [{ torch: false }] });
+                } catch (e) {}
+                isFlashOn = false;
+                btnFlash.textContent = 'Flash: Off';
+                btnFlash.classList.remove('active');
+            }
+            
             if (cameraStream) {
                 cameraStream.getTracks().forEach(track => track.stop());
                 cameraStream = null;
+                videoTrack = null;
             }
             video.srcObject = null;
             isCameraOn = false;
             isAIDetecting = false;
-            btnCamera.textContent = '📷 Start Camera';
+            torchSupported = false;
+            btnFlash.disabled = true;
+            btnCamera.textContent = 'Start Camera';
             btnCamera.className = 'btn btn-success';
             btnAI.disabled = true;
-            btnAI.textContent = '🤖 Start AI';
+            btnMirror.disabled = true;
+            btnSwitchCamera.disabled = true;
+            btnAI.textContent = 'Start AI';
             btnAI.className = 'btn btn-primary';
             overlayMsg.style.display = 'flex';
-            overlayText.textContent = "Kamera Dimatikan";
+            overlayText.textContent = "Camera Stopped";
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            liveDetectionEl.textContent = '⏳ Kamera dimatikan.';
+            liveDetectionEl.textContent = 'Waiting for camera...';
+            liveDetectionEl.classList.remove('active');
+            
+            video.classList.remove('mirrored');
+            canvas.classList.remove('mirrored');
+            isMirrored = false;
+            btnMirror.textContent = 'Mirror: Off';
+            currentFacingMode = 'environment';
         }
 
-        // ============ LOAD MODEL ============
         async function loadModel() {
             overlayMsg.style.display = 'flex';
-            overlayText.textContent = "Memuat Model AI (COCO-SSD)... ~5MB. Mohon tunggu.";
+            overlayText.textContent = "Loading AI Model (COCO-SSD)... Please wait.";
             try {
                 model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
                 overlayMsg.style.display = 'none';
-                console.log("✅ Model AI berhasil dimuat! Bisa deteksi 80 kelas objek.");
             } catch (err) {
-                console.error("❌ Gagal memuat model:", err);
-                overlayText.textContent = "Gagal Memuat Model AI. Cek koneksi internet.";
+                console.error("Model load failed:", err);
+                overlayText.textContent = "Failed to load AI model. Check internet connection.";
             }
         }
 
-        // ============ WARNA PER KELAS ============
         function getColorForClass(className) {
             const colors = {
                 'person': '#10b981', 'laptop': '#3b82f6', 'cell phone': '#8b5cf6',
@@ -412,14 +747,13 @@
             return colors[className] || '#10b981';
         }
 
-        // ============ SAVE TO DATABASE ============
         async function saveToDatabase(data) {
             try {
                 const itemsString = data.map(d => `${d.class} (${d.confidence}%)`).join(', ');
                 const payload = {
                     items: itemsString,
                     count: data.length,
-                    device_id: 'BROWSER-TEST',
+                    device_id: navigator.userAgent.includes('Mobile') ? 'MOBILE' : 'DESKTOP',
                     timestamp: isMockMode ? new Date().toISOString() : serverTimestamp()
                 };
                 if (isMockMode) {
@@ -427,13 +761,11 @@
                 } else {
                     await addDoc(collectionRef, payload);
                 }
-                console.log("💾 Data tersimpan:", payload);
             } catch (err) {
-                console.error("Gagal simpan:", err);
+                console.error("Save failed:", err);
             }
         }
 
-        // ============ DETECTION LOOP ============
         async function detectLoop() {
             if (!isAIDetecting || !isCameraOn || !model) return;
 
@@ -464,22 +796,20 @@
                         const textWidth = ctx.measureText(label).width;
                         ctx.fillRect(x, y - 25, textWidth + 10, 25);
                         ctx.fillStyle = '#ffffff';
-                        ctx.font = 'bold 14px sans-serif';
-                        ctx.fillText(label, x + 5, y - 7);
+                        ctx.font = 'bold 13px sans-serif';
+                        ctx.fillText(label, x + 5, y - 8);
                     }
                 });
 
-                // LIVE DETECTION DISPLAY
                 if (detectedTargets.length > 0) {
-                    const labels = detectedTargets.map(t => `${t.class} (${t.confidence}%)`).join(' | ');
-                    liveDetectionEl.textContent = `🎯 Terdeteksi (${detectedTargets.length}): ${labels}`;
-                    liveDetectionEl.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    const labels = detectedTargets.map(t => `${t.class} (${t.confidence}%)`).join(', ');
+                    liveDetectionEl.textContent = `Detected: ${labels}`;
+                    liveDetectionEl.classList.add('active');
                 } else {
-                    liveDetectionEl.textContent = '🔍 Mencari objek...';
-                    liveDetectionEl.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    liveDetectionEl.textContent = 'Scanning...';
+                    liveDetectionEl.classList.remove('active');
                 }
 
-                // SAVE TO DATABASE (dengan throttling atau tanpa)
                 if (detectedTargets.length > 0) {
                     const now = Date.now();
                     if (SAVE_THROTTLE_MS === 0 || (now - lastSaveTime) > SAVE_THROTTLE_MS) {
@@ -488,13 +818,12 @@
                     }
                 }
             } catch (err) {
-                console.error("Error di detectLoop:", err);
+                console.error("Detection error:", err);
             }
 
             requestAnimationFrame(detectLoop);
         }
 
-        // ============ REAL-TIME LISTENER ============
         function listenToDatabase() {
             let q;
             if (isMockMode) {
@@ -514,7 +843,7 @@
                     if (data.timestamp) {
                         const date = isMockMode ? new Date(data.timestamp) : data.timestamp.toDate();
                         timeStr = date.toLocaleTimeString('id-ID');
-                    } else { timeStr = 'Baru saja'; }
+                    } else { timeStr = 'Just now'; }
                     const div = document.createElement('div');
                     div.className = 'log-item';
                     div.innerHTML = `<span class="time">${timeStr}</span><span class="items">${data.items}</span>`;
@@ -522,16 +851,15 @@
                 });
                 document.getElementById('log-count').textContent = `${count} items`;
                 if (count === 0) {
-                    dataList.innerHTML = '<div class="empty-state">Belum ada objek terdeteksi</div>';
+                    dataList.innerHTML = '<div class="empty-state">No objects detected yet</div>';
                 }
             });
         }
 
-        // ============ EXPORT CSV ============
         function exportToCSV() {
             const logs = document.querySelectorAll('.log-item');
-            if (logs.length === 0) { alert('Belum ada data!'); return; }
-            let csv = 'Waktu,Objek Terdeteksi\n';
+            if (logs.length === 0) { alert('No data to export!'); return; }
+            let csv = 'Time,Detected Objects\n';
             logs.forEach(log => {
                 const time = log.querySelector('.time').textContent;
                 const items = log.querySelector('.items').textContent;
@@ -546,29 +874,30 @@
             window.URL.revokeObjectURL(url);
         }
 
-        // ============ BUTTON EVENTS ============
         btnCamera.addEventListener('click', () => isCameraOn ? stopCamera() : startCamera());
+        btnSwitchCamera.addEventListener('click', switchCamera);
+        btnMirror.addEventListener('click', toggleMirror);
+        btnFlash.addEventListener('click', toggleFlash);
         btnAI.addEventListener('click', () => {
             if (!isAIDetecting) {
                 isAIDetecting = true;
-                btnAI.textContent = '⏹ Stop AI';
+                btnAI.textContent = 'Stop AI';
                 btnAI.className = 'btn btn-danger';
-                btnExport.style.display = 'inline-block';
+                btnExport.style.display = 'flex';
                 detectLoop();
             } else {
                 isAIDetecting = false;
-                btnAI.textContent = '🤖 Start AI';
+                btnAI.textContent = 'Start AI';
                 btnAI.className = 'btn btn-primary';
+                btnExport.style.display = 'none';
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                liveDetectionEl.textContent = '⏹ AI dihentikan.';
-                liveDetectionEl.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                liveDetectionEl.textContent = 'AI detection stopped.';
+                liveDetectionEl.classList.remove('active');
             }
         });
         btnExport.addEventListener('click', exportToCSV);
 
-        // ============ INIT ============
         function initApp() {
-            console.log("🚀 Memulai inisialisasi...");
             listenToDatabase();
             loadModel();
         }
